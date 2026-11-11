@@ -10,6 +10,15 @@ updates:
       nuget-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    # The Microsoft.* packages (ASP.NET Core, EF Core, Microsoft.Extensions) and Npgsql's EF provider
+    # share .NET's major version. Their next major needs the next .NET SDK, so it's an upgrade of
+    # global.json, Directory.Build.props' TargetFramework and the Dockerfiles together, not one PR per
+    # package.
+    ignore:
+      - dependency-name: "Microsoft.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Npgsql.EntityFrameworkCore.PostgreSQL"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
     labels: ["dependencies"]
@@ -24,6 +33,11 @@ updates:
       npm-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    # TypeScript 7 (the native compiler) has no JavaScript compiler API yet, which openapi-typescript
+    # needs to generate src/lib/api-types.ts. Revisit when openapi-typescript supports it.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
     labels: ["dependencies"]
