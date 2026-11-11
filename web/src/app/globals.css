@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Stop mobile browsers (notably iOS Safari) from auto-zooming when a form
+   control is focused. They zoom in whenever the field's font-size is below
+   16px — our inputs use text-sm (14px), which trips it. Bumping to 16px on
+   touch devices removes the trigger while leaving desktop typography and
+   pinch-to-zoom untouched. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}

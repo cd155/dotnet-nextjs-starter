@@ -1,0 +1,108 @@
+# Production, on one VPS behind Caddy (docs/deployment.md). Every variable comes from a .env beside this file;
+# docs/deployment.md lists them. This file is the one place their names are mapped to what the images expect:
+# POSTGRES_* for postgres, and Section__Key paths for the .NET apps' configuration.
+
+name: starter
+
+services:
+  postgres:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  databaseinitializer:
+    image: ${REGISTRY_NAMESPACE}/databaseinitializer:latest
+    restart: on-failure # run until migrations succeed, then stop
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}"
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SEED_MOCK_DATA: "false"
+      # The public /mcp URL, which the mcp scope is bound to (docs/mcp.md).
+      MCP_RESOURCE: ${MCP_RESOURCE:-}
+    networks:
+      - app-net
+
+  platformserver:
+    image: ${REGISTRY_NAMESPACE}/platformserver:latest
+    restart: always
+    volumes:
+      # Keeps the cookie and antiforgery keys across restarts, so a deploy doesn't sign everyone out.
+      - platformserver-keys:/root/.aspnet/DataProtection-Keys
+    depends_on:
+      databaseinitializer:
+        condition: service_completed_successfully
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}"
+      SENTRY_SERVER_DSN: ${SENTRY_SERVER_DSN:-}
+      Cors__AllowedOrigins__0: ${WEB_APP_URL}
+      # Emailed links open the web app's pages.
+      WebApp__BaseUrl: ${WEB_APP_URL}
+      # Transactional email over SMTP (docs/deployment.md, "Email"). Without the password, PlatformServer still
+      # starts, but every email fails and it logs an error at startup.
+      Email__Host: ${SMTP_HOST}
+      Email__Port: ${SMTP_PORT:-587}
+      Email__Username: ${SMTP_USERNAME:-}
+      Email__Password: ${SMTP_PASSWORD:-}
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS}
+      Email__FromName: ${EMAIL_FROM_NAME:-Starter}
+      # Cloudflare Turnstile's secret key (docs/deployment.md, "Turnstile"). Without it, sign-up refuses everyone and
+      # PlatformServer logs an error at startup.
+      Turnstile__SecretKey: ${TURNSTILE_SECRET_KEY:-}
+      # The OAuth server's persistent keys: base64 PFX files (docs/mcp.md). Without them, PlatformServer won't start.
+      OpenIddict__SigningCertificate: ${OPENIDDICT_SIGNING_CERTIFICATE}
+      OpenIddict__EncryptionCertificate: ${OPENIDDICT_ENCRYPTION_CERTIFICATE}
+      OpenIddict__CertificatePassword: ${OPENIDDICT_CERTIFICATE_PASSWORD:-}
+      # MCP sign-in: this server's public base URL (the tokens' issuer) and the public /mcp URL (their audience).
+      MCP_AUTHORITY: ${MCP_AUTHORITY:-}
+      MCP_RESOURCE: ${MCP_RESOURCE:-}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app-net
+      - caddy-net
+
+  webapp:
+    image: ${REGISTRY_NAMESPACE}/webapp:latest
+    restart: always
+    depends_on:
+      - platformserver
+    environment:
+      # Read at runtime, so one image serves any deployment.
+      API_BASE_URL: http://platformserver:8080
+      SENTRY_WEBAPP_DSN: ${SENTRY_WEBAPP_DSN:-}
+      # Cloudflare Turnstile's site key for the sign-up and resend forms. The API checks the tokens.
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+    networks:
+      - app-net
+      - caddy-net
+
+volumes:
+  pgdata:
+  platformserver-keys:
+
+networks:
+  app-net:
+    driver: bridge
+  # Created once on the VPS (docker network create caddy-net), shared with the Caddy container.
+  caddy-net:
+    external: true

@@ -1,0 +1,107 @@
+name: CI - Web - Build & Lint
+
+on:
+  pull_request:
+    branches: ["main"]
+    types: [opened, synchronize, reopened, ready_for_review]
+    # No top-level `paths:`/`paths-ignore:` filter on purpose: a required check must
+    # always report a status to satisfy branch protection on `main`. A workflow skipped
+    # by path filtering leaves its required check stuck "Expected" and blocks the PR, so
+    # path filtering happens inside the job instead (see the `filter` step).
+
+# Cancel superseded runs for the same PR to save CI minutes on rapid pushes. The group is
+# this workflow's own: ci-server.yml runs on the same PRs, and a shared group would cancel one
+# workflow with the other.
+concurrency:
+  group: ci-web-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # One job, as in ci-server.yml: GitHub bills every job for at least a whole minute. A PR that
+  # changes nothing under web/ but Markdown runs only the checkout, the scan and the filter.
+  build:
+    name: Build & Lint
+    # A job skipped via `if:` still reports success, so draft PRs don't block on it.
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    # The Next.js app lives in web/. `uses:` steps don't read this, so they get the
+    # paths below.
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # The PR half of security-scan.yml, here rather than in a job of its own to save its
+      # minute. It runs on every PR, whatever changed, and before `npm ci` so it scans only
+      # the committed tree. Only HIGH/CRITICAL findings with an upstream fix fail it, so a PR is
+      # never blocked by an advisory nobody can act on yet. See security-scan.yml for what the
+      # scan covers and why trivy-action is pinned.
+      - name: Dependency & secret scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+      # On pull_request events paths-filter lists the changed files through the API, so the
+      # checkout needs no history.
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          # `code` is true when at least one changed file is under web/ and is NOT Markdown, so
+          # server-only and documentation-only PRs leave it false. `every` makes a file match
+          # only if it matches every pattern; with the default `some`, '!**/*.md' alone would
+          # match every server file.
+          predicate-quantifier: 'every'
+          filters: |
+            code:
+              - 'web/**'
+              - '!**/*.md'
+            workflow:
+              - '.github/workflows/ci-web.yml'
+
+      # The steps below run only when the filter matched; `changes` lists the filters that did.
+      - name: Setup Node.js
+        if: steps.filter.outputs.changes != '[]'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        if: steps.filter.outputs.changes != '[]'
+        run: npm ci
+
+      # api-types.ts is generated from openapi.json (which the server CI keeps current), so it must be
+      # regenerated whenever the document changes.
+      - name: Verify the API types are up to date
+        if: steps.filter.outputs.changes != '[]'
+        run: |
+          npm run api:types
+          git diff --exit-code src/lib/api-types.ts || {
+            echo "::error file=web/src/lib/api-types.ts::web/src/lib/api-types.ts is out of date. Run npm --prefix web run api:types and commit it."
+            exit 1
+          }
+
+      - name: Lint
+        if: steps.filter.outputs.changes != '[]'
+        run: npm run lint
+
+      # `next build` also type-checks.
+      - name: Build
+        if: steps.filter.outputs.changes != '[]'
+        run: npm run build
+        env:
+          API_BASE_URL: http://localhost:8080

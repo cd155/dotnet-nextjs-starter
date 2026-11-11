@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    @* Follow the OS light/dark setting using Bootstrap's built-in colour modes. Runs before the
+       stylesheets load so the page never flashes the wrong theme. Blazor's enhanced navigation
+       resets <html> attributes on each page change, so the observer puts the theme back. *@
+    <script>
+        (function () {
+            var dark = window.matchMedia('(prefers-color-scheme: dark)');
+            var root = document.documentElement;
+            function applyTheme() {
+                var theme = dark.matches ? 'dark' : 'light';
+                if (root.getAttribute('data-bs-theme') !== theme) {
+                    root.setAttribute('data-bs-theme', theme);
+                }
+            }
+            applyTheme();
+            dark.addEventListener('change', applyTheme);
+            new MutationObserver(applyTheme).observe(root, { attributes: true, attributeFilter: ['data-bs-theme'] });
+        })();
+    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css?v=5.3.8" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="PlatformServer.styles.css" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <meta name="apple-mobile-web-app-title" content="Starter CMS" />
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>

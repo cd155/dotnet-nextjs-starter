@@ -1,0 +1,58 @@
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        @* Reloads the page: a web app on the iPhone Home Screen has no Safari reload button. *@
+        <a class="navbar-brand" href="" title="Reload" onclick="location.reload(); return false;">
+            <img class="brand-logo" src="favicon.svg" alt="" />
+            <span class="nav-label">Starter CMS</span>
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item">
+            <NavLink class="nav-link d-flex align-items-center" href="" Match="NavLinkMatch.All" title="Home">
+                <i class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></i>
+                <span class="nav-label text-nowrap">Home</span>
+            </NavLink>
+        </div>
+
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item">
+                    <NavLink class="nav-link d-flex align-items-center" href="notes" title="Notes">
+                        <i class="bi bi-journal-text" aria-hidden="true"></i>
+                        <span class="nav-label text-nowrap">Notes</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item">
+                    <NavLink class="nav-link d-flex align-items-center" href="email" title="Email">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
+                        <span class="nav-label text-nowrap">Email</span>
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+
+    <AuthorizeView>
+        <Authorized>
+            <div class="nav-account">
+                <div class="nav-item">
+                    <span class="nav-link nav-user d-flex align-items-center" title="@context.User.Identity?.Name">
+                        <i class="bi bi-person-circle" aria-hidden="true"></i>
+                        <span class="nav-label text-nowrap">@context.User.Identity?.Name</span>
+                    </span>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link d-flex align-items-center" href="/auth/logout" title="Log out">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                        <span class="nav-label text-nowrap">Log out</span>
+                    </a>
+                </div>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+</div>

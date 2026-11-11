@@ -1,0 +1,52 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- The OpenAPI document the web generates its API types from (web/openapi.json). Off by
+       default: generating it starts the app, which needs Development settings and a connection string.
+       Regenerate as described in server/CLAUDE.md, "OpenAPI document". -->
+  <PropertyGroup>
+    <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../../web</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name openapi</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Http" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="Sentry.AspNetCore" />
+    <!-- SMTP for transactional email (Features/Email): your provider in production, Mailpit locally. -->
+    <PackageReference Include="MailKit" />
+    <!-- OAuth 2.1 authorization server for the MCP endpoint's sign-in. -->
+    <PackageReference Include="OpenIddict.AspNetCore" />
+    <!-- The MCP server (Features/Mcp). -->
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The MCP prompts' templates, read by McpPromptTemplate. -->
+    <EmbeddedResource Include="Features\Mcp\Prompts\*.md" LogicalName="PlatformServer.Features.Mcp.Prompts.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SharedLibrary\SharedLibrary.csproj" />
+    <ProjectReference Include="..\DataLibrary\DataLibrary.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" Condition="Exists('appsettings.Development.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,37 @@
+name: Dependabot auto-merge
+
+# Automatically enables auto-merge for Dependabot PRs once required CI checks pass.
+# Major version bumps are intentionally excluded so they always get a manual review.
+#
+# Prerequisites (one-time, in repo Settings):
+#   - General -> "Allow auto-merge" must be enabled.
+#   - A branch ruleset / protection on `main` with the CI checks marked as
+#     "required": the server's Build & Test and the web's Build & Lint. Without
+#     required checks, GitHub merges immediately instead of waiting for CI. Each side's
+#     check skips its work (reporting success) on the other side's updates, so a missing
+#     one lets those updates merge unchecked.
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot:
+    name: Enable auto-merge
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for non-major updates
+        if: ${{ steps.metadata.outputs.update-type != 'version-update:semver-major' }}
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

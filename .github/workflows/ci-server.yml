@@ -1,0 +1,127 @@
+name: CI - Server - Build & Test
+
+on:
+  pull_request:
+    branches: ["main"]
+    types: [opened, synchronize, reopened, ready_for_review]
+    # No top-level `paths:` filter on purpose: required checks must always report a
+    # status to satisfy branch protection on `main`. A workflow skipped by path
+    # filtering leaves its required checks stuck "Expected" and blocks the PR, so
+    # path filtering happens inside the job instead (see the `filter` step).
+
+# Cancel superseded runs for the same PR to save CI minutes on rapid pushes. The group is
+# this workflow's own: ci-web.yml runs on the same PRs, and a shared group would cancel one
+# workflow with the other.
+concurrency:
+  group: ci-server-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # One job, not one per check: GitHub bills every job for at least a whole minute, and each
+  # job would check out and set up .NET again. A step skipped by its `if:` costs nothing, so a
+  # PR that changes no server code finishes after the filter step and still reports success.
+  build:
+    name: Build & Test
+    # A job skipped via `if:` still reports success, so draft PRs don't block on it.
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # On pull_request events paths-filter lists the changed files through the API, so the
+      # checkout needs no history.
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          # Build inputs above the projects (server/Directory.Build.props, server/Directory.Packages.props,
+          # server/Starter.sln, and global.json at the repo root) affect every project, so each filter
+          # lists them too. Each also lists this workflow, so a change to it runs every step.
+          filters: |
+            platformServer:
+              - 'server/src/PlatformServer/**'
+              # Generated from PlatformServer; a hand edit must fail the staleness check below.
+              - 'web/openapi.json'
+              - 'server/src/SharedLibrary/**'
+              - 'server/src/DataLibrary/**'
+              - 'server/Directory.Build.props'
+              - 'server/Directory.Packages.props'
+              - 'global.json'
+              - 'server/Starter.sln'
+              - '.github/workflows/ci-server.yml'
+            databaseInitializer:
+              - 'server/src/DatabaseInitializer/**'
+              - 'server/src/SharedLibrary/**'
+              - 'server/src/DataLibrary/**'
+              - 'server/Directory.Build.props'
+              - 'server/Directory.Packages.props'
+              - 'global.json'
+              - 'server/Starter.sln'
+              - '.github/workflows/ci-server.yml'
+            tests:
+              - 'server/src/PlatformServer/**'
+              - 'server/tests/PlatformServer.Tests/**'
+              - 'server/src/SharedLibrary/**'
+              - 'server/src/DataLibrary/**'
+              - 'server/Directory.Build.props'
+              - 'server/Directory.Packages.props'
+              - 'global.json'
+              - 'server/Starter.sln'
+              - '.github/workflows/ci-server.yml'
+            formatting:
+              - 'server/src/**'
+              - 'server/tests/**'
+              - 'server/.editorconfig'
+              - 'server/Directory.Build.props'
+              - 'server/Directory.Packages.props'
+              - 'global.json'
+              - 'server/Starter.sln'
+              - '.github/workflows/ci-server.yml'
+
+      # `changes` lists the filters that matched, so this skips when none did.
+      - name: Setup .NET
+        if: steps.filter.outputs.changes != '[]'
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      # The build also writes web/openapi.json, which the web generates its API types from,
+      # so a change to what the API sends or accepts must regenerate it in the same PR. Generating starts
+      # the app, hence the Development environment and a connection string it never connects with.
+      - name: Build PlatformServer
+        if: steps.filter.outputs.platformServer == 'true'
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__DefaultConnection: Host=unused
+        run: dotnet build --configuration Release ./server/src/PlatformServer/PlatformServer.csproj -p:OpenApiGenerateDocuments=true
+
+      - name: Verify the OpenAPI document is up to date
+        if: steps.filter.outputs.platformServer == 'true'
+        run: |
+          git diff --exit-code web/openapi.json || {
+            echo "::error file=web/openapi.json::web/openapi.json is out of date. Regenerate it as described in server/CLAUDE.md, \"OpenAPI document\", and commit it."
+            exit 1
+          }
+
+      - name: Build DatabaseInitializer
+        if: steps.filter.outputs.databaseInitializer == 'true'
+        run: dotnet build --configuration Release ./server/src/DatabaseInitializer/DatabaseInitializer.csproj
+
+      # `dotnet test` restores and builds the test project first.
+      - name: Run PlatformServer.Tests
+        if: steps.filter.outputs.tests == 'true'
+        run: dotnet test --configuration Release ./server/tests/PlatformServer.Tests/PlatformServer.Tests.csproj
+
+      # Whitespace only, read straight from the files (--folder), which takes about a second. The full
+      # `dotnet format` loads and compiles the whole solution again, for half a minute, and beyond
+      # whitespace it would only add the order of `using` directives: .editorconfig sets no style rule
+      # to warning or error, and the build already reports the analyzers' warnings. `dotnet format`
+      # before a PR still fixes the order.
+      - name: Verify formatting
+        if: steps.filter.outputs.formatting == 'true'
+        run: dotnet format whitespace server --folder --verify-no-changes --verbosity normal

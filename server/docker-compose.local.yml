@@ -1,0 +1,93 @@
+# The local stack: Postgres, the database initializer (migrations and seed data), Mailpit and PlatformServer
+# (API, CMS and MCP). Run the web app beside it with `npm --prefix web run dev`.
+#
+# Every variable here can be overridden in a .env beside this file (server/.env). The host ports too, so the
+# stack can run beside another one: API_PORT, POSTGRES_PORT, MAILPIT_PORT, MAILPIT_SMTP_PORT and WEB_PORT.
+
+name: starter
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-starter}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-localpassword}
+      POSTGRES_DB: ${DB_NAME:-starter}
+    volumes:
+      - pgdata-local:/var/lib/postgresql
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"   # for pgAdmin or psql
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-starter}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  databaseinitializer:
+    build:
+      context: .
+      dockerfile: src/DatabaseInitializer/Dockerfile
+    restart: on-failure     # run until it succeeds, then stop
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=${DB_NAME:-starter};Username=${DB_USER:-starter};Password=${DB_PASSWORD:-localpassword}"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Adminpassword1@}
+      SEED_MOCK_DATA: "${SEED_MOCK_DATA:-true}"  # the demo user and their notes; false skips them
+      # Must match PlatformServer's below: the mcp scope is bound to it.
+      MCP_RESOURCE: http://localhost:${API_PORT:-8080}/mcp
+      # Seeds the MCP Inspector client, for trying the tools locally (docs/mcp.md).
+      MCP_INSPECTOR_REDIRECT_URI: http://localhost:6274/oauth/callback
+    networks:
+      - app-net
+
+  # Catches every email PlatformServer sends; read them at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_PORT:-8025}:8025"        # web UI
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"   # SMTP, also for PlatformServer run outside Docker
+    networks:
+      - app-net
+
+  platformserver:
+    build:
+      context: .
+      dockerfile: src/PlatformServer/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      databaseinitializer:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=${DB_NAME:-starter};Username=${DB_USER:-starter};Password=${DB_PASSWORD:-localpassword}"
+      SENTRY_SERVER_DSN: ${SENTRY_SERVER_DSN:-}
+      # Email goes to Mailpit, which speaks plain SMTP and needs no login.
+      Email__Host: mailpit
+      Email__Port: 1025
+      Email__Security: None
+      Email__FromAddress: noreply@example.com
+      # Confirmation links open the local web app (npm --prefix web run dev).
+      WebApp__BaseUrl: http://localhost:${WEB_PORT:-3000}
+      # The MCP endpoint's sign-in: this app's own URL issues the tokens, for the /mcp URL.
+      MCP_AUTHORITY: http://localhost:${API_PORT:-8080}
+      MCP_RESOURCE: http://localhost:${API_PORT:-8080}/mcp
+    ports:
+      - "${API_PORT:-8080}:8080"   # API, CMS and MCP at http://localhost:8080
+    networks:
+      - app-net
+
+volumes:
+  pgdata-local:
+
+networks:
+  app-net:
+    driver: bridge

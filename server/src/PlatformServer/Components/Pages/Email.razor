@@ -1,0 +1,85 @@
+@page "/email"
+@using System.Security.Claims
+@using DataLibrary.Entities.Identity
+@using PlatformServer.Features.Email
+@attribute [Authorize(Roles = RoleConstants.Admin)]
+@inject EmailSender _emailSender
+@inject ILogger<Email> _logger
+
+@* Sends a test message, to check the email settings (docs/deployment.md, "Email"). A plain form with no
+   circuit, like the other pages; the result shows on the page the post returns. *@
+
+<PageTitle>Email</PageTitle>
+
+<div class="container py-4">
+    <h1 class="mb-4">Email</h1>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="h5 mb-2">Send a test email</h2>
+            <p class="text-muted">Checks the email settings: the message goes out the way the app's own emails do.</p>
+
+            @if (error is not null)
+            {
+                <div class="alert alert-danger" role="alert">@error</div>
+            }
+            @if (sentTo is not null)
+            {
+                <div class="alert alert-success" role="status">Sent to @sentTo.</div>
+            }
+
+            <form method="post" @formname="email-test" @onsubmit="SendAsync">
+                <AntiforgeryToken />
+                <div class="mb-3">
+                    <label for="recipient" class="form-label">Recipient</label>
+                    <input type="email" id="recipient" name="Recipient" value="@Recipient" class="form-control" required />
+                </div>
+                <button type="submit" class="btn btn-primary">Send test email</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    [SupplyParameterFromForm(FormName = "email-test")]
+    private string? Recipient { get; set; }
+
+    private string? error;
+    private string? sentTo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The admin's own address, until they type another.
+        if (Recipient is null && AuthenticationState is not null)
+        {
+            Recipient = (await AuthenticationState).User.FindFirstValue(ClaimTypes.Email);
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        var recipient = Recipient?.Trim();
+        if (string.IsNullOrEmpty(recipient))
+        {
+            error = "Recipient is required.";
+            return;
+        }
+
+        try
+        {
+            await _emailSender.SendAsync(
+                recipient,
+                "Test email",
+                $"<p>This is a test email from the starter, sent {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC.</p>");
+            sentTo = recipient;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Test email to {Recipient} failed", recipient);
+            error = $"Sending failed: {exception.Message}";
+        }
+    }
+}

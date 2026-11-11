@@ -1,0 +1,89 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@layout Layout.LoginLayout
+@using Microsoft.AspNetCore.WebUtilities
+
+@inject NavigationManager NavigationManager
+
+<PageTitle>Login</PageTitle>
+
+@* Static server-rendered form (no interactive render mode, so no SignalR circuit is spun up just to
+   sign in). The form posts to /auth/login (AuthFeature) with the returnUrl the cookie challenge
+   supplied, so the user lands back on the page they asked for. Styling is isolated to this page via
+   Login.razor.css. *@
+<div class="login-page">
+    <div class="login-shell">
+        <div class="login-brand">Starter CMS</div>
+
+        <div class="login-card">
+            <h1 class="login-title">Login</h1>
+
+            <form method="post" action="/auth/login">
+                <AntiforgeryToken />
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                <div class="login-field">
+                    <label for="email" class="login-label">Email</label>
+                    <input type="email"
+                           id="email"
+                           name="email"
+                           class="login-input"
+                           placeholder="Enter email"
+                           autocomplete="username"
+                           required />
+                </div>
+
+                <div class="login-field">
+                    <label for="password" class="login-label">Password</label>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           class="login-input"
+                           placeholder="Enter password"
+                           autocomplete="current-password"
+                           required />
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="login-error" role="alert">
+                        @errorMessage
+                    </div>
+                }
+
+                <button type="submit" class="login-button">Login</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? errorMessage;
+    private string? returnUrl;
+
+    protected override void OnInitialized()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        // Preserve the return URL (set by the cookie authentication challenge) so it is posted
+        // back to /auth/login and the user lands back on the page they originally requested.
+        if (query.TryGetValue("ReturnUrl", out var returnUrlValue))
+        {
+            returnUrl = returnUrlValue.ToString();
+        }
+
+        if (query.TryGetValue("error", out var error))
+        {
+            errorMessage = error.ToString() switch
+            {
+                "empty" => "Please enter your email and password.",
+                "invalid" => "Invalid email or password.",
+                "locked" => "Account locked due to too many failed attempts. Please try again later.",
+                "ratelimit" => "Too many login attempts. Please wait a minute before trying again.",
+                "expired" => "The sign-in form expired. Please try again.",
+                _ => "An error occurred. Please try again."
+            };
+        }
+    }
+}

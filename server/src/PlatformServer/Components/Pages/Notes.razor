@@ -1,0 +1,67 @@
+@page "/notes"
+@attribute [Authorize(Roles = RoleConstants.Admin)]
+@using DataLibrary.DbContexts
+@using DataLibrary.Entities.Identity
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext _db
+
+@* The CMS's example page: every user's notes, newest first, read-only. Rendered once per request, with no
+   circuit. A page that edits would add @rendermode InteractiveServer and work on untracked copies, since the
+   page keeps one DbContext for its whole life. *@
+
+<PageTitle>Notes</PageTitle>
+
+<div class="container py-4">
+    <h1 class="h3 mb-3">Notes</h1>
+
+    @if (rows is null)
+    {
+        <p class="text-muted">Loading…</p>
+    }
+    else if (rows.Count == 0)
+    {
+        <p class="text-muted">No notes yet.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr><th>Title</th><th>Owner</th><th>Pinned</th><th>Changed (UTC)</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in rows)
+                    {
+                        <tr>
+                            <td>@row.Title</td>
+                            <td class="text-muted">@row.Owner</td>
+                            <td>@(row.IsPinned ? "Yes" : "")</td>
+                            <td class="text-nowrap">@row.Changed.ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (rows.Count == Limit)
+        {
+            <p class="small text-muted">Showing the latest @Limit.</p>
+        }
+    }
+</div>
+
+@code {
+    private const int Limit = 200;
+
+    private List<Row>? rows;
+
+    protected override async Task OnInitializedAsync()
+    {
+        rows = await _db.Notes.AsNoTracking()
+            .OrderByDescending(n => n.UpdatedTime ?? n.CreatedTime)
+            .Take(Limit)
+            .Select(n => new Row(n.Title, n.User!.Email ?? n.UserId, n.IsPinned, n.UpdatedTime ?? n.CreatedTime))
+            .ToListAsync();
+    }
+
+    private sealed record Row(string Title, string Owner, bool IsPinned, DateTime Changed);
+}

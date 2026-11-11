@@ -1,0 +1,97 @@
+name: Security scan
+
+# Free vulnerability scanning, without GitHub Advanced Security.
+# Trivy checks dependency manifests and committed secrets, and scans the built container images,
+# on a weekly schedule and on demand. On PRs the same filesystem scan runs as a step of ci-web.yml's
+# Build & Lint job, which saves a billed minute per PR over a job of its own; keep the two in step.
+# The only manifest the filesystem scan finds
+# is the web's package-lock.json: Trivy doesn't read a .csproj's PackageReferences, so the server's
+# NuGet packages are checked by the image scans, from the published .deps.json. The image scans
+# are also the only thing that sees the base layers (the .NET runtime image's OS packages, and
+# node:22-alpine's musl, busybox, openssl, zlib, ca-certificates and Node binaries), none of which
+# appears in a manifest. Findings are printed in the job log. The jobs differ deliberately on what
+# fails them:
+#
+#   fs scan (weekly, and PRs)  ignore-unfixed: true  — only HIGH/CRITICAL findings that have an
+#                                                      upstream fix fail the build, so a PR is
+#                                                      never blocked by an advisory nobody can
+#                                                      act on yet.
+#   server images (weekly)     ignore-unfixed: true  — the same rule, for the Debian-based .NET
+#                                                      images.
+#   webapp image (weekly)      ignore-unfixed: false — unpatched Alpine CVEs fail it too, since
+#                                                      those are the whole point of the job. It
+#                                                      never runs on PRs, so a red result blocks
+#                                                      no one.
+#
+# The image builds are heavier (the webapp's runs its production build), so they stay off PRs.
+#
+# Use a `.trivyignore` file to suppress accepted findings in any job.
+#
+# trivy-action is pinned rather than tracked at @master: CVE-2026-33634 force-pushed this
+# action's version tags to credential-stealing malware, and v0.35.0+ is covered by
+# GitHub's immutable releases. Pinning also lets the Dependabot github-actions group keep
+# it current, which it cannot do for a branch ref.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    name: Dependency & secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+  images:
+    name: Container image scan (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: PlatformServer
+            dockerfile: server/src/PlatformServer/Dockerfile
+            context: server
+            ignore-unfixed: true
+          - image: DatabaseInitializer
+            dockerfile: server/src/DatabaseInitializer/Dockerfile
+            context: server
+            ignore-unfixed: true
+          - image: webapp
+            dockerfile: web/Dockerfile
+            context: web
+            ignore-unfixed: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Built natively for amd64, the same platform the deploy workflows produce.
+      - name: Build ${{ matrix.image }} image
+        run: docker build -t starter-scan:${{ matrix.image }} -f ${{ matrix.dockerfile }} ${{ matrix.context }}
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: starter-scan:${{ matrix.image }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: ${{ matrix.ignore-unfixed }}
+          exit-code: '1'
+          format: table

@@ -1,0 +1,72 @@
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+}
+
+main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* An icon rail on narrower screens, the full sidebar with labels from the lg breakpoint. */
+.sidebar {
+    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    flex-shrink: 0;
+    width: 4rem;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+}
+
+@media (max-width: 640.98px) {
+    /* Phones: the sidebar becomes a top bar above the page. It stays pinned so the menu button is
+       always in reach. */
+    .page {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: auto;
+        height: auto;
+        z-index: 2;
+    }
+
+    article {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+}
+
+@media (min-width: 992px) {
+    .sidebar {
+        width: 250px;
+    }
+}
+
+@media (min-width: 641px) {
+    article {
+        padding-left: 2rem !important;
+        padding-right: 1.5rem !important;
+    }
+}
+
+#blazor-error-ui {
+    background: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning-text-emphasis);
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }

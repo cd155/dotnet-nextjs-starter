@@ -1,0 +1,42 @@
+# Configuration for release-drafter (https://github.com/release-drafter/release-drafter)
+# Keeps a DRAFT GitHub Release continuously updated with the list of PRs merged into
+# main. It only drafts notes — it never publishes a release and never deploys.
+
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+# A PR is listed under every category it has a label for, so give each PR one label (a
+# feature+bug PR, for example, shows under both Features and Bug Fixes).
+categories:
+  - title: 'Features'
+    labels: ['feature']
+  - title: 'Bug Fixes'
+    labels: ['bug']
+  - title: 'Maintenance'
+    labels: ['chore', 'refactor', 'test']
+  - title: 'Dependencies'
+    labels: ['dependencies']
+  - title: 'CI'
+    labels: ['ci']
+  - title: 'Documentation'
+    labels: ['docs']
+
+# Uncategorized PRs (e.g. unlabeled ones) still appear in the list below the categories.
+change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
+change-title-escapes: '\<*_&'
+
+# No major label: a 1.0 is a launch decision, not one PR's. To cut it, edit the draft's tag
+# and title to v1.0.0 before publishing.
+version-resolver:
+  minor:
+    labels: ['feature']
+  patch:
+    labels: ['bug', 'docs', 'chore', 'refactor', 'test', 'ci', 'dependencies']
+  default: patch
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  **Full Changelog**: https://github.com/cd155/dotnet-nextjs-starter/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION

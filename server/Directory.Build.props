@@ -1,0 +1,46 @@
+<Project>
+  
+  <PropertyGroup>
+    <!-- Common properties for all projects -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <WarningsNotAsErrors />
+    
+    <!-- Enable nullable reference types analysis -->
+    
+    <!-- Code analysis -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    
+    <!-- Assembly metadata -->
+    <Company>Starter</Company>
+    <Product>Starter</Product>
+    <Copyright>Copyright © 2026 cd155</Copyright>
+    
+    <!-- Source control and repository information -->
+    <RepositoryUrl>https://github.com/cd155/dotnet-nextjs-starter</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    
+    <!-- Generate XML documentation files -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    
+    <!-- Deterministic builds for better CI/CD -->
+    <Deterministic>true</Deterministic>
+    <DeterministicSourcePaths>true</DeterministicSourcePaths>
+  </PropertyGroup>
+
+  <!-- Common package references that all projects might need -->
+  <ItemGroup>
+    <!-- These can be overridden in specific projects if needed -->
+  </ItemGroup>
+
+  <!-- Suppress specific warnings globally if needed -->
+  <PropertyGroup>
+    <!-- Suppress XML documentation warnings for now -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

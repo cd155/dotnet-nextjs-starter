@@ -1,0 +1,10 @@
+# Normalize all text files to LF in the repository.
+# Git auto-detects binary files; they are left untouched.
+* text=auto
+
+# Shell scripts must always be LF, even on Windows checkouts.
+*.sh text eol=lf
+
+# Windows batch scripts require CRLF to run correctly.
+*.cmd text eol=crlf
+*.bat text eol=crlf

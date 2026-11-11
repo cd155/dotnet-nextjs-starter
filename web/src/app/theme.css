@@ -1,0 +1,68 @@
+/* The colour tokens. globals.css imports this
+   right after Tailwind (`@import "./theme.css";`), and the
+   `@theme inline` block turns the theme tokens into utilities such as
+   `bg-card-bg` and `text-muted`. */
+
+:root {
+  /* Primary */
+  --blue-450: #007BFF;
+  --blue-600: #104C80;
+  --blue-400: #75A9D6;
+  --blue-200: #C3E3FF;
+
+  /* Positive / Buy */
+  --green-100: #90EE90;
+  --green-300: #2E8B57;
+  --green-400: #006400;
+
+  /* Negative / Sell */
+  --red-100: #FF6347;
+  --red-300: #CD5C5C;
+  --red-400: #8B0000;
+
+  /* Neutral */
+  --grey-100: #FCFCFB;
+  --grey-200: #F0F2F1;
+  --grey-300: #E0E2E1;
+  --grey-400: #D0D2D1;
+  --grey-500: #B0B2B1;
+  --grey-600: #3B4340;
+  --grey-700: #2B2D2C;
+  --grey-800: #1A1C1B;
+  --grey-900: #000000;
+
+  /* Theme */
+  --background: var(--grey-100);
+  --foreground: var(--grey-900);
+  --card-bg: #FFFFFF;
+  --card-border: var(--grey-200);
+  --muted: var(--grey-600);
+  --primary: var(--blue-450);
+  --chart-stroke: var(--blue-450);
+  --chart-fill: rgba(195, 227, 255, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #000000;
+    --foreground: var(--grey-100);
+    --card-bg: var(--grey-800);
+    --card-border: var(--grey-800);
+    --muted: var(--grey-500);
+    --primary: var(--blue-450);
+    --chart-stroke: var(--blue-400);
+    --chart-fill: rgba(16, 76, 128, 0.6);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-green-accent: var(--green-300);
+  --color-red-accent: var(--red-300);
+  --color-blue-accent: var(--blue-450);
+}

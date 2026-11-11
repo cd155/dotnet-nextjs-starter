@@ -1,0 +1,76 @@
+@page "/"
+@using DataLibrary.DbContexts
+@using DataLibrary.Entities.Identity
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Diagnostics.HealthChecks
+@inject AppDbContext _db
+@inject HealthCheckService _healthCheckService
+
+@* Rendered once per request, with no circuit: it only reads. *@
+
+<PageTitle>Home</PageTitle>
+
+<AuthorizeView Roles="@RoleConstants.Admin">
+    <Authorized>
+        <div class="container py-4" style="max-width: 640px;">
+            @if (health is null)
+            {
+                <p class="text-muted">Loading…</p>
+            }
+            else
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="card-title h5 d-flex justify-content-between align-items-center mb-0">
+                            Health
+                            <span class="badge @HealthBadge(health.Value)" title="The database check behind /health">@health</span>
+                        </h2>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="card-title h5 mb-0">
+                            @users.ToString("N0") users
+                            <span class="text-muted fw-normal">· @notes.ToString("N0") notes</span>
+                        </h2>
+                    </div>
+                </div>
+            }
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="container py-4">
+            <h1>Welcome to the CMS</h1>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private HealthStatus? health;
+    private int users;
+    private int notes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationState is null || !(await AuthenticationState).User.IsInRole(RoleConstants.Admin))
+        {
+            return;
+        }
+
+        users = await _db.Users.CountAsync();
+        notes = await _db.Notes.CountAsync();
+        health = (await _healthCheckService.CheckHealthAsync()).Status;
+    }
+
+    // Bootstrap 5.1 (wwwroot/bootstrap), which has no text-bg-* yet.
+    private static string HealthBadge(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "bg-success",
+        HealthStatus.Degraded => "bg-warning text-dark",
+        _ => "bg-danger",
+    };
+}

@@ -1,0 +1,11 @@
+# An example Caddyfile for the VPS: Caddy gets TLS certificates and sends each host to its container on caddy-net.
+# Replace the hosts with your own, and set WEB_APP_URL, MCP_AUTHORITY and MCP_RESOURCE to match (docs/deployment.md).
+
+app.example.com {
+	reverse_proxy starter-webapp-1:3000
+}
+
+# The API, the CMS, the OAuth endpoints and /mcp.
+api.example.com {
+	reverse_proxy starter-platformserver-1:8080
+}

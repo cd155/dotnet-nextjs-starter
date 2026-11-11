@@ -1,0 +1,14 @@
+# Each half keeps its own .gitignore, in server/ and web/. These cover the root folder itself.
+
+# macOS Finder metadata
+.DS_Store
+
+# Local settings and secrets: the stack reads server/.env, but one left here must never be committed
+/.env
+/.env.*
+/*.env
+
+# Editors and stray installs at the root
+/.idea/
+/.vscode/
+/node_modules/
