@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using DataLibrary.Entities.Identity;
+using MailKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.AspNetCore.Identity;
@@ -182,7 +183,7 @@ public sealed class EmailSender(IOptions<EmailOptions> options, IHostEnvironment
             await client.AuthenticateAsync(settings.Username, settings.Password ?? string.Empty, cancellationToken);
         }
 
-        await client.SendAsync(message, cancellationToken);
+        await client.SendAsync(new SendRequest(message), cancellationToken);
         await client.DisconnectAsync(quit: true, cancellationToken);
     }
 }
