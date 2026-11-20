@@ -1,4 +1,4 @@
-name: CI - Web - Build & Lint
+name: CI - Web
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ jobs:
   # One job, as in ci-server.yml: GitHub bills every job for at least a whole minute. A PR that
   # changes nothing under web/ but Markdown runs only the checkout, the scan and the filter.
   build:
-    name: Build & Lint
+    name: Lint & Build
     # A job skipped via `if:` still reports success, so draft PRs don't block on it.
     if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest

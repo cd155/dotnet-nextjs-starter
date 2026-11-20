@@ -6,7 +6,7 @@ name: Dependabot auto-merge
 # Prerequisites (one-time, in repo Settings):
 #   - General -> "Allow auto-merge" must be enabled.
 #   - A branch ruleset / protection on `main` with the CI checks marked as
-#     "required": the server's Build & Test and the web's Build & Lint. Without
+#     "required": the server's Build, Test & Format and the web's Lint & Build. Without
 #     required checks, GitHub merges immediately instead of waiting for CI. Each side's
 #     check skips its work (reporting success) on the other side's updates, so a missing
 #     one lets those updates merge unchecked.

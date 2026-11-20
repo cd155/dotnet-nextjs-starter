@@ -1,4 +1,4 @@
-name: CI - Server - Build & Test
+name: CI - Server
 
 on:
   pull_request:
@@ -25,7 +25,7 @@ jobs:
   # job would check out and set up .NET again. A step skipped by its `if:` costs nothing, so a
   # PR that changes no server code finishes after the filter step and still reports success.
   build:
-    name: Build & Test
+    name: Build, Test & Format
     # A job skipped via `if:` still reports success, so draft PRs don't block on it.
     if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
