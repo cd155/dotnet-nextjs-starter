@@ -3,7 +3,7 @@ name: Security scan
 # Free vulnerability scanning, without GitHub Advanced Security.
 # Trivy checks dependency manifests and committed secrets, and scans the built container images,
 # on a weekly schedule and on demand. On PRs the same filesystem scan runs as a step of ci-web.yml's
-# Build & Lint job, which saves a billed minute per PR over a job of its own; keep the two in step.
+# Lint & Build job, which saves a billed minute per PR over a job of its own; keep the two in step.
 # The only manifest the filesystem scan finds
 # is the web's package-lock.json: Trivy doesn't read a .csproj's PackageReferences, so the server's
 # NuGet packages are checked by the image scans, from the published .deps.json. The image scans
