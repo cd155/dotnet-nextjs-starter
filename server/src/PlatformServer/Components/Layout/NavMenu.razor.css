@@ -93,7 +93,8 @@
     color: white;
 }
 
-/* Phones: the sidebar is a top bar whose menu button shows the links (Blazor's template pattern). */
+/* Phones: the sidebar is a top bar whose menu button, on the left, shows the links (Blazor's
+   template pattern). */
 .navbar-toggler {
     appearance: none;
     cursor: pointer;
@@ -101,7 +102,7 @@
     height: 2.5rem;
     position: absolute;
     top: 0.5rem;
-    right: 1rem;
+    left: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.375rem;
     background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.1);
@@ -115,13 +116,20 @@
     display: none;
 }
 
-.navbar-toggler:checked ~ .nav-scrollable {
-    display: block;
-}
-
 /* Phones: the open menu drops down over the page, so opening it while scrolled doesn't push the
    page down, and a long menu scrolls on its own. */
 @media (max-width: 640.98px) {
+    /* The logo moves right of the menu button. */
+    .top-row .container-fluid {
+        padding-left: 4.25rem;
+    }
+
+    /* Phones only: clicking a link also ticks the hidden menu checkbox, which on wider screens
+       would override the sidebar's flex layout until the next page loads. */
+    .navbar-toggler:checked ~ .nav-scrollable {
+        display: block;
+    }
+
     .nav-scrollable {
         position: absolute;
         top: 100%;
